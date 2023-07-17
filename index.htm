@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Udemy Courses Narrative Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #sceneContainer {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+        }
+
+        button {
+            display: block;
+            margin: 20px auto;
+        }
+
+        .bar {
+            fill: steelblue;
+        }
+
+        .bar:hover {
+            fill: brown;
+        }
+
+        .axis {
+            font: 10px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="sceneContainer">
+        <!-- Scenes will be populated here -->
+    </div>
+
+    <button id="prev">Previous</button>
+    <button id="next">Next</button>
+
+    <script>
+        // Scene parameters
+        let currentScene = 0;
+        const scenes = [
+            {id: 'overview', drawScene: drawSubjects},
+            {id: 'prices', drawScene: drawPrices},
+            {id: 'levels', drawScene: drawLevels}
+        ];
+
+        // Initialize the SVG container for scenes
+        let sceneContainer = d3.select('#sceneContainer').append('svg');
+
+        // Load data for the first scene
+        loadScene(scenes[currentScene]);
+
+        function loadScene(scene) {
+            d3.csv('udemy_courses.csv').then(data => {
+                // Clear any existing scene
+                sceneContainer.html("");
+                // Draw the scene
+                scene.drawScene(data, sceneContainer);
+            });
+        }
+
+        // Event listeners for navigation buttons
+        d3.select('#prev').on('click', () => {
+            if (currentScene > 0) {
+                currentScene--;
+                loadScene(scenes[currentScene]);
+            }
+        });
+
+        d3.select('#next').on('click', () => {
+            if (currentScene < scenes.length - 1) {
+                currentScene++;
+                loadScene(scenes[currentScene]);
+            }
+        });
+
+        function drawSubjects(data, svg) {
+            // Transform data
+            let subjectCounts = d3.rollups(data, v => v.length, d => d.subject);
+            subjectCounts.forEach(d => {
+                d[1] = +d[1];  // convert count to numeric
+            });
+
+            svg.attr("width", 800)
+                .attr("height", 600);
+
+            const x = d3.scaleBand()
+                .range([0, 800])
+                .padding(0.1);
+
+            const y = d3.scaleLinear()
+                .range([600, 0]);
+
+            x.domain(subjectCounts.map(d => d[0]));
+            y.domain([0, d3.max(subjectCounts, d => d[1])]);
+
+            svg.append("g")
+                .attr("class", "axis")
+                .attr("transform", "translate(0," + 600 + ")")
+                .call(d3.axisBottom(x));
+
+            svg.append("g")
+                .attr("class", "axis")
+                .call(d3.axisLeft(y));
+
+            svg.selectAll(".bar")
+                .data(subjectCounts)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d[0]))
+                .attr("width", x.bandwidth())
+                .attr("y", d => y(d[1]))
+                .attr("height", d => 600 - y(d[1]));
+        }
+
+        // Additional functions to handle other scenes can be added here. 
+        // For example, for a scatter plot of price vs. number of subscribers, 
+        // and a histogram for course level distribution.
+
+    </script>
+</body>
+</html>
