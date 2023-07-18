@@ -3,132 +3,755 @@
 <head>
     <title>Udemy Courses Narrative Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
         }
 
+        #buttonContainer {
+  display: flex;
+  justify-content: space-between;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #ddd;
+}
+
+button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.custom-label text {
+    font-size: 2px; /* Adjust the font size here */
+  }
+
+button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
         #sceneContainer {
-            width: 800px;
+            width: 600px;
             height: 600px;
             margin: 0 auto;
         }
 
-        button {
-            display: block;
-            margin: 20px auto;
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
         }
 
-        .bar {
-            fill: steelblue;
+        #explanation {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            width: 600px; /* Adjust the width to match with the graph */
+            margin: auto; /* Center align the div */
         }
 
-        .bar:hover {
-            fill: brown;
-        }
+        #filters {
+            display: flex;
+  justify-content: space-between;
+  max-width: 600px;
+  margin: 0 auto;
+  margin-top: -20px; 
+  }
 
-        .axis {
-            font: 10px sans-serif;
-        }
+  .filter {
+    margin-bottom: 10px;
+  }
 
-        .axis path,
-        .axis line {
-            fill: none;
-            stroke: #000;
-            shape-rendering: crispEdges;
-        }
+  .filter label {
+    display: inline-block;
+    width: 150px;
+    text-align: right;
+    margin-right: 10px;
+    font-weight: bold;
+  }
+
+  .filter input[type="number"] {
+    width: 80px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+</style>
+
+
+
+
+
 
     </style>
 </head>
 <body>
-    <div id="sceneContainer">
-        <!-- Scenes will be populated here -->
-    </div>
 
-    <button id="prev">Previous</button>
-    <button id="next">Next</button>
+  
+
+    <div id="buttonContainer">
+        <button id="btnOverview">Category Overview</button>
+        <button id="btnWebDev">Web Dev. Topics</button>
+        <button id="btnPopular">Popular Courses</button>
+      </div>
+
+
+    
+    <div id="sceneContainer"></div>
+
+    <div id="filters" style="display: none">
+        <div class="filter">
+          <label for="textSearch">Course name:</label>
+          <input type="text" id="textSearch">
+        </div>
+      
+        <div class="filter">
+          <label for="priceFilterMin">Min Price:</label>
+          <input type="number" id="priceFilterMin" min="0" max="200" step="10" value="0">
+          <label for="priceFilterMax">Max Price:</label>
+          <input type="number" id="priceFilterMax" min="0" max="200" step="10" value="200">
+        </div>
+      
+        <div class="filter">
+          <label for="subscribersFilterMin">Min Subscribers:</label>
+          <input type="number" id="subscribersFilterMin" min="0" max="121600" step="1000" value="0">
+          <label for="subscribersFilterMax">Max Subscribers:</label>
+          <input type="number" id="subscribersFilterMax" min="0" max="121600" step="1000" value="121600">
+        </div>
+      </div>
+
+        <div id="explanation"></div> 
+
+       
+    
+
+    <div class="tooltip"></div> 
+
+  
 
     <script>
-        // Scene parameters
-        let currentScene = 0;
-        const scenes = [
-            {id: 'overview', drawScene: drawSubjects},
-            {id: 'prices', drawScene: drawPrices},
-            {id: 'levels', drawScene: drawLevels}
-        ];
+       let currentScene = 0;
 
-        // Initialize the SVG container for scenes
-        let sceneContainer = d3.select('#sceneContainer').append('svg');
+       const scenes = [
+  { id: 'overview', title: 'Category Overview', drawScene: drawSubjects },
+  { id: 'prices', title: 'Web Dev. Topics', drawScene: drawPrices },
+  { id: 'levels', title: 'Popular Courses', drawScene: drawLevels }
+];
 
-        // Load data for the first scene
-        loadScene(scenes[currentScene]);
+// Initialize the SVG container for scenes
+let sceneContainer = d3.select('#sceneContainer').append('svg').attr("width", 600).attr("height", 600);
 
-        function loadScene(scene) {
-            d3.csv('udemy_courses.csv').then(data => {
-                // Clear any existing scene
-                sceneContainer.html("");
-                // Draw the scene
-                scene.drawScene(data, sceneContainer);
-            });
-        }
+// Load data for the first scene
+loadScene(scenes[currentScene]);
 
-        // Event listeners for navigation buttons
-        d3.select('#prev').on('click', () => {
-            if (currentScene > 0) {
-                currentScene--;
-                loadScene(scenes[currentScene]);
-            }
+// Function to load a scene
+function loadScene(scene) {
+  d3.csv('udemy_courses.csv').then(data => {
+    // Clear any existing scene
+
+    sceneContainer.html("");
+    
+      scene.drawScene(data, sceneContainer);
+ 
+    // Show/hide filter controls based on the current scene
+    const filtersDiv = document.getElementById('filters');
+    filtersDiv.style.display = scene.id === 'levels' ? 'block' : 'none';
+
+    const explanationDiv = document.getElementById('explanation');
+    explanationDiv.style.display = scene.id === 'levels' ? 'none' : 'block';
+  });
+}
+
+d3.select('#btnOverview').on('click', () => {
+  currentScene = 0;
+  loadScene(scenes[currentScene]);
+});
+
+d3.select('#btnWebDev').on('click', () => {
+  currentScene = 1;
+  loadScene(scenes[currentScene]);
+});
+
+d3.select('#btnPopular').on('click', () => {
+  currentScene = 2;
+  loadScene(scenes[currentScene]);
+});
+
+        function drawSubjects(data, svg, showFreeCourses) {
+        
+  subjectCounts = d3.rollups(data, v => d3.sum(v, d => d.num_subscribers), d => d.subject);
+  subjectAverages = d3.rollups(data, v => d3.mean(v, d => d.price), d => d.subject);
+
+
+
+        subjectCounts.sort((a, b) => b[1] - a[1]);
+
+        const margin = {top: 20, right: 20, bottom: 70, left: 80},
+            width = +svg.attr("width") - margin.left - margin.right,
+            height = +svg.attr("height") - margin.top - margin.bottom;
+
+        const x = d3.scaleBand()
+            .range([0, width])
+            .padding(0.1);
+
+        const y = d3.scaleLinear()
+            .range([height, 0]);
+
+        let g = svg.append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        x.domain(subjectCounts.map(d => d[0]));
+        y.domain([0, d3.max(subjectCounts, d => d[1])]);
+
+        g.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x));
+
+        g.append("g")
+            .call(d3.axisLeft(y));
+
+        g.append("text")
+            .attr("class", "x-label")
+            .attr("x", width / 2)
+            .attr("y", height + margin.bottom - 30)
+            .attr("text-anchor", "middle")
+            .style("font-size", "14px")
+            .text("Category");
+
+        g.append("text")
+            .attr("class", "y-label")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -height / 2)
+            .attr("y", -margin.left + 10)
+            .attr("text-anchor", "middle")
+            .style("font-size", "14px")
+            .text("Total Number of Subscribers");
+
+        let tooltip = d3.select(".tooltip");
+        let formatComma = d3.format(",");
+
+        g.selectAll(".bar")
+            .data(subjectCounts)
+            .enter().append("rect")
+            .attr("class", "bar")
+            .attr("x", d => x(d[0]))
+            .attr("width", x.bandwidth())
+            .attr("y", d => y(d[1]))
+            .attr("height", d => height - y(d[1]))
+            .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+
+
+        g.selectAll(".bar")
+            .on("mouseover", function (event, d) {
+                d3.select(this).attr("opacity", 0.7); // Reduce opacity on mouseover
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                tooltip.html("Category: " + d[0] + "<br>Subscribers: " + formatComma(d[1]))
+                    .style("left", (event.pageX - 30) + "px")
+                    .style("top", (event.pageY - 90) + "px");
+            })
+            .on("mouseout", function (d) {
+                d3.select(this).attr("opacity", 1); // Restore opacity on mouseout
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
         });
 
-        d3.select('#next').on('click', () => {
-            if (currentScene < scenes.length - 1) {
-                currentScene++;
-                loadScene(scenes[currentScene]);
-            }
-        });
 
-        function drawSubjects(data, svg) {
-            // Transform data
-            let subjectCounts = d3.rollups(data, v => v.length, d => d.subject);
-            subjectCounts.forEach(d => {
-                d[1] = +d[1];  // convert count to numeric
-            });
 
-            svg.attr("width", 800)
-                .attr("height", 600);
 
-            const x = d3.scaleBand()
-                .range([0, 800])
-                .padding(0.1);
+        const annotation = [
+    {
+      note: {
+        label: "Web Development has significantly more total subscribers than other categories, indicating that most learners come to Udemy to study this topic.",
+        align: "middle",
+        title: "Hot Subject",
+        wrap: 200, // Adjust the wrap value to control the text width
+      padding: 5, // Add padding between the text and the subject
+      fontSize: 18,
+      orientation: "below" // Position the annotation below the subject
+      },
+      x: 150,
+      y: 250,
+      dy: -20,
+      dx: 200,
+      color: "black",
+      subject: {
+      radius: 10,
+      radiusPadding: 5,
+    },
+    connector: {
+      end: "arrow",
+      type: "line",
+      endScale: 2
+    }
+}
+  ];
 
-            const y = d3.scaleLinear()
-                .range([600, 0]);
+  const makeAnnotations = d3.annotation().annotations(annotation);
 
-            x.domain(subjectCounts.map(d => d[0]));
-            y.domain([0, d3.max(subjectCounts, d => d[1])]);
+  svg.append("g").call(makeAnnotations);
 
-            svg.append("g")
-                .attr("class", "axis")
-                .attr("transform", "translate(0," + 600 + ")")
-                .call(d3.axisBottom(x));
+  d3.select("#explanation").html(`
+    <p>
+      The significance of the data: The height of the bars reflects the total number of subscribers in each category.
+      The average price for courses in each category is shown when you hover over the bar.
+    </p>
+    <div class="toggle-container">
+      <input type="checkbox" id="toggle-free-courses" checked>
+      <label for="toggle-free-courses">Include Free Courses</label>
+    </div>
+  `);
 
-            svg.append("g")
-                .attr("class", "axis")
-                .call(d3.axisLeft(y));
+  let toggleContainer = d3.select(".toggle-container");
+  toggleContainer.select("input").on("change", toggleFreeCourses);
 
-            svg.selectAll(".bar")
-                .data(subjectCounts)
-                .enter().append("rect")
-                .attr("class", "bar")
-                .attr("x", d => x(d[0]))
-                .attr("width", x.bandwidth())
-                .attr("y", d => y(d[1]))
-                .attr("height", d => 600 - y(d[1]));
-        }
+  function toggleFreeCourses() {
+    const showFreeCourses = toggleContainer.select("input").property("checked");
+    updateSubjects(showFreeCourses);
+  }
 
-        // Additional functions to handle other scenes can be added here. 
-        // For example, for a scatter plot of price vs. number of subscribers, 
-        // and a histogram for course level distribution.
+  function updateSubjects(showFree) {
+    filteredData = showFree ? data : data.filter(d => d.price > 0);
+
+    subjectCounts = d3.rollups(filteredData, v => d3.sum(v, d => d.num_subscribers), d => d.subject);
+
+    x.domain(subjectCounts.map(d => d[0]));
+    y.domain([0, d3.max(subjectCounts, d => d[1])]);
+
+    g.select(".x-label").text("Category");
+    g.select(".y-label").text("Total Number of Subscribers");
+
+    g.selectAll(".bar")
+      .data(subjectCounts)
+      .transition()
+      .duration(500)
+      .attr("x", d => x(d[0]))
+      .attr("width", x.bandwidth())
+      .attr("y", d => y(d[1]))
+      .attr("height", d => height - y(d[1]));
+  }
+}
+
+
+    function drawPrices(data, svg) {
+  // Filter the data for web development courses that are not free
+  const webDevCourses = data.filter(
+    d => d.subject === "Web Development" && d.price > 0
+  );
+
+  // Extract the topic from the course title
+  const extractTopic = title => {
+    // Regular expressions mapping topics to technologies
+    const regexList = [
+      { regex: /javascript/i, topic: "JavaScript" },
+      { regex: /html/i, topic: "HTML" },
+      { regex: /css/i, topic: "CSS" },
+      { regex: /react/i, topic: "React.js" },
+      { regex: /angular/i, topic: "Angular" },
+      { regex: /node/i, topic: "Node.js" },
+      { regex: /bootstrap/i, topic: "Bootstrap" },
+      { regex: /jquery/i, topic: "jQuery" },
+      { regex: /php/i, topic: "PHP" },
+      { regex: /ruby|rails/i, topic: "Ruby on Rails" },
+      { regex: /wordpress/i, topic: "WordPress" },
+      // Add more technologies/topics here
+    ];
+
+    for (const { regex, topic } of regexList) {
+      if (regex.test(title)) {
+        return topic;
+      }
+    }
+    return ""; // Return an empty string if no match is found
+  };
+
+  // Roll up data by topic and calculate subscriber count and average price
+  const topicData = d3.rollup(
+    webDevCourses,
+    v => ({
+      subscribers: d3.sum(v, d => d.num_subscribers),
+      averagePrice: d3.mean(v, d => d.price),
+    }),
+    d => extractTopic(d.course_title)
+  );
+
+  // Convert the rollup data to an array of objects
+  const topicArray = Array.from(topicData, ([topic, { subscribers, averagePrice }]) => ({
+    topic,
+    subscribers,
+    averagePrice,
+  })).filter(d => d.topic !== "");
+
+  // Sort the topic array by average price in decreasing order
+  topicArray.sort((a, b) => a.averagePrice - b.averagePrice);
+
+  // Set up the dimensions and margins for the scatterplot chart
+  const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+  const width = +svg.attr("width") - margin.left - margin.right;
+  const height = +svg.attr("height") - margin.top - margin.bottom;
+
+  // Create the x and y scales for the scatterplot chart
+  const x = d3
+    .scalePoint()
+    .domain(topicArray.map(d => d.topic))
+    .range([0, width])
+    .padding(0.8);
+
+  const y = d3
+    .scaleLinear()
+    .domain([
+      d3.min(topicArray, d => d.averagePrice - 5),
+      d3.max(topicArray, d => d.averagePrice + 5)
+    ])
+    .range([height, 0]);
+
+  const r = d3
+    .scaleSqrt()
+    .domain([0, d3.max(topicArray, d => d.subscribers)])
+    .range([1, 30]);
+
+  // Create the scatterplot chart container
+  const g = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+ const points = g
+    .selectAll(".point")
+    .data(topicArray)
+    .enter()
+    .append("g")
+    .attr("class", "point");
+
+  let tooltip = d3.select(".tooltip");
+  let formatComma = d3.format(",");
+
+  points
+    .append("circle")
+    .attr("cx", d => x(d.topic))
+    .attr("cy", d => y(d.averagePrice))
+    .attr("r", d => r(d.subscribers))
+    .attr("fill", "steelblue")
+    .on("mouseover", (event, d) => {
+      tooltip.transition().duration(200).style("opacity", 0.9);
+      tooltip
+        .html(
+          `Topic: ${d.topic}<br>Subscribers: ${formatComma(d.subscribers)}<br>Average Price: $${d.averagePrice.toFixed(
+            2
+          )}`
+        )
+        .style("left", event.pageX + "px")
+        .style("top", event.pageY - 28 + "px");
+    })
+    .on("mouseout", () => {
+      tooltip.transition().duration(500).style("opacity", 0);
+    });
+
+
+    points
+    .append("text")
+    .attr("x", d => x(d.topic))
+    .attr("y", (d, i) => (i % 2 === 1 ? y(d.averagePrice) - r(d.subscribers) - 10 : y(d.averagePrice) + r(d.subscribers) + 15))
+    .attr("text-anchor", "middle")
+    .attr("font-size", "10px")
+    .text(d => d.topic);
+
+
+  
+
+  // Add y-axis with label
+  g.append("g")
+    .attr("class", "axis")
+    .call(d3.axisLeft(y))
+
+g.append("text")
+        .attr("class", "y-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -margin.left + 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text("Avg. Price (USD)");
+
+
+        const annotation = [
+    {
+      note: {
+        label: "HTML courses have many subscribers, but a relatively low average price.",
+        align: "middle",
+        wrap: 200, // Adjust the wrap value to control the text width
+      padding: 1, // Add padding between the text and the subject
+      fontSize: 18,
+      orientation: "above"
+      },
+      x: 140,
+      y: 460,
+      dy: 20,
+      dx: 150,
+      color: "black",
+      subject: {
+      radius: 10,
+      radiusPadding: 5,
+    },
+    connector: {
+      end: "arrow",
+      type: "line",
+      endScale: 1
+    }
+},
+{
+    note: {
+        label: "JavaScript courses have the second-most subscribers after HTML, but a higher average price.",
+        align: "middle",
+        wrap: 200, // Adjust the wrap value to control the text width
+      padding: 1, // Add padding between the text and the subject
+      fontSize: 18,
+      orientation: "above"
+      },
+      x: 410,
+      y: 165,
+      dy: 60,
+      dx: 70,
+      color: "black",
+      subject: {
+      radius: 10,
+      radiusPadding: 5,
+    },
+    connector: {
+      end: "arrow",
+      type: "line",
+      endScale: 1
+    }
+},
+{
+    note: {
+        label: "Angular courses have the highest average price.",
+        align: "middle",
+        wrap: 200, // Adjust the wrap value to control the text width
+      padding: 1, // Add padding between the text and the subject
+      fontSize: 18,
+      orientation: "above"
+      },
+      x: 545,
+      y: 85,
+      dy: -10,
+      dx: -150,
+      color: "black",
+      subject: {
+      radius: 10,
+      radiusPadding: 5,
+    },
+    connector: {
+      end: "arrow",
+      type: "line",
+      endScale: 1
+    }
+}
+  ];
+
+  const makeAnnotations = d3.annotation().annotations(annotation);
+
+  svg.append("g").call(makeAnnotations);
+
+    d3.select("#explanation")
+            .html("Explanation of the second stage!");
+}
+
+
+function drawLevels(data, svg) {
+  // Filter the data for web development courses
+  const webDevCourses = data.filter(
+    d => d.subject === "Web Development" && d.price > 0
+  );
+
+  console.log(webDevCourses.length)
+
+  // Set up the dimensions for the table
+  const svgWidth = +svg.attr("width");
+  const svgHeight = +svg.attr("height");
+  const tableHeight = svgHeight * 0.75;
+  const barHeight = svgHeight * 0.1;
+  const barWidth = svgWidth * 0.9;
+  const tableWidth = svgWidth * 0.9;
+
+  // Select the container element for the table
+  const tableContainer = svg.append("foreignObject")
+    .attr("x", (svgWidth - tableWidth) / 2)
+    .attr("y", (svgHeight - tableHeight - barHeight) / 2 - 20)
+    .attr("width", tableWidth)
+    .attr("height", tableHeight)
+    .append("xhtml:div")
+    .style("overflow", "auto")
+    .style("max-height", `${tableHeight - 50}px`) // Adjust the max-height to be slightly smaller
+    .style("padding", "20px")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px");
+
+  // Create the HTML table
+  const table = tableContainer.append("table")
+    .style("width", "100%")
+    .style("border-collapse", "collapse");
+
+  // Create the table header
+  const thead = table.append("thead");
+  const headerRow = thead.append("tr")
+    .style("background-color", "#f0f0f0")
+    .style("font-weight", "bold");
+  headerRow.append("th").text("Course Title");
+  headerRow.append("th").text("Subscribers");
+  headerRow.append("th").text("Price");
+
+  // Create the table body
+  const tbody = table.append("tbody");
+
+  const barContainer = svg.append("g")
+    .attr("transform", `translate(${(svgWidth - barWidth) / 2}, ${(svgHeight + tableHeight) / 2 - 30})`);
+
+  const barBackground = barContainer.append("rect")
+    .attr("width", barWidth)
+    .attr("height", barHeight)
+    .style("fill", "#e0e6ed") 
+    .style("stroke", "#ddd")
+    .style("stroke-width", "1px")
+    .style("rx", "4px")
+    .style("ry", "4px");
+
+  const barFill = barContainer.append("rect")
+    .attr("width", 0)
+    .attr("height", barHeight)
+    .style("fill", "steelblue")
+    .style("rx", "4px")
+    .style("ry", "4px");
+
+    const barText = barContainer.append("text")
+    .attr("x", barWidth / 2)
+    .attr("y", barHeight / 2)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("fill", "black")
+    .style("font-weight", "bold");
+
+  // Function to update the table based on filters
+  function updateData() {
+    // Get the filter values
+
+    tbody.selectAll("tr").remove();
+    const textSearchValue = textSearchInput.node().value.toLowerCase();
+    const priceFilterMin = +priceFilterMinInput.node().value;
+    const priceFilterMax = +priceFilterMaxInput.node().value;
+    const subscribersFilterMin = +subscribersFilterMinInput.node().value;
+    const subscribersFilterMax = +subscribersFilterMaxInput.node().value;
+
+// Filter the web development courses based on the filters
+const filteredCourses = webDevCourses.filter(course => {
+  // Filter by course name text
+  if (textSearchValue && !course.course_title.toLowerCase().includes(textSearchValue)) {
+    return false;
+  }
+
+  // Filter by price range
+  if ((priceFilterMin && course.price < priceFilterMin) ||
+      (priceFilterMax && course.price > priceFilterMax)) {
+    return false;
+  }
+
+  // Filter by number of subscribers range
+  if ((subscribersFilterMin && course.num_subscribers < subscribersFilterMin) ||
+      (subscribersFilterMax && course.num_subscribers > subscribersFilterMax)) {
+    return false;
+  }
+
+  return true;
+});
+
+
+    // Sort the filtered courses by number of subscribers
+  const sortedCourses = filteredCourses.sort((a, b) => b.num_subscribers - a.num_subscribers);
+
+  // Update the table body with sorted and filtered courses
+  const rows = tbody.selectAll("tr").data(sortedCourses);
+
+  // Enter selection - append new rows
+  const enterRows = rows.enter().append("tr");
+
+  enterRows.append("td")
+    .style("padding", "8px")
+    .style("border-bottom", "1px solid #ddd")
+    .text(d => d.course_title);
+  
+  enterRows.append("td")
+    .style("padding", "8px")
+    .style("border-bottom", "1px solid #ddd")
+    .text(d => d.num_subscribers);
+  
+  enterRows.append("td")
+    .style("padding", "8px")
+    .style("border-bottom", "1px solid #ddd")
+    .text(d => d.price);
+
+    // Exit selection - remove rows that are no longer needed
+    rows.exit().remove();
+
+    const selectedCourses = filteredCourses.length;
+
+    const totalCoursesCount = webDevCourses.length;
+    const selectedCoursesCount = filteredCourses.length;
+
+    const barFillWidth = barWidth * (selectedCoursesCount / totalCoursesCount);
+
+    barFill.attr("width", barFillWidth);
+
+    barText.text(`${selectedCoursesCount} / ${totalCoursesCount}`);
+  }
+
+  const textSearchInput = d3.select("#textSearch");
+  const priceFilterMinInput = d3.select("#priceFilterMin");
+  const priceFilterMaxInput = d3.select("#priceFilterMax");
+  const subscribersFilterMinInput = d3.select("#subscribersFilterMin");
+  const subscribersFilterMaxInput = d3.select("#subscribersFilterMax");
+
+  // Bind filter events to update the table
+  textSearchInput.on("input", updateData);
+  priceFilterMinInput.on("input", updateData);
+  priceFilterMaxInput.on("input", updateData);
+  subscribersFilterMinInput.on("input", updateData);
+  subscribersFilterMaxInput.on("input", updateData);
+
+  // Initial table update
+  updateData();
+}
+
+
+
+
+
+
+
+
+
 
     </script>
 </body>
