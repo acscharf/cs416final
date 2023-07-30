@@ -14,7 +14,7 @@
   display: flex;
   justify-content: space-between;
   max-width: 500px;
-  margin: 0 auto;
+  margin: auto;
 }
 
 button {
@@ -65,12 +65,35 @@ button:last-child {
         }
 
         #explanation {
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 16px;
             margin-bottom: 20px;
             width: 600px; /* Adjust the width to match with the graph */
             margin: auto; /* Center align the div */
         }
+
+        #header {
+  font-size: 16px;
+  margin-bottom: 30px;
+  width: 600px; /* Adjust the width to match with the graph */
+  margin: auto; /* Center align the div */
+}
+
+#header b {
+  font-size: 20px; /* Increase the font size for the header title */
+  display: block; /* Display it as a block element for proper line break */
+  text-align: center; /* Center align the text */
+
+}
+
+#header a {
+  color: #0066cc; /* Change the link color */
+  text-decoration: underline; /* Add underline to the link */
+}
+
+#header a:hover {
+  color: #004080; /* Change the link color on hover */
+}
+
 
         #filters {
             display: flex;
@@ -109,12 +132,15 @@ button:last-child {
 </head>
 <body>
 
-  
-
+  <div id="header">
+    <b>Creating a High-revenue Udemy Course</b>
+    <p>We'll explore factors that can lead to a high-revenue course, focusing on high subscriber counts and high course prices, and then you can freely explore the Web Development category and gain insights into what makes a course successful on Udemy.</p>
+    <p>This data is based the <a href="https://www.kaggle.com/datasets/andrewmvd/udemy-courses">Udemy Courses dataset on Kaggle</a>.</p>
+    </div>
     <div id="buttonContainer">
         <button id="btnOverview">Category Overview</button>
         <button id="btnWebDev">Web Dev. Topics</button>
-        <button id="btnPopular">Popular Courses</button>
+        <button id="btnPopular">Free Exploration</button>
       </div>
 
 
@@ -157,7 +183,7 @@ button:last-child {
        const scenes = [
   { id: 'overview', title: 'Category Overview', drawScene: drawSubjects },
   { id: 'prices', title: 'Web Dev. Topics', drawScene: drawPrices },
-  { id: 'levels', title: 'Popular Courses', drawScene: drawLevels }
+  { id: 'levels', title: 'Free Exploration', drawScene: drawLevels }
 ];
 
 // Initialize the SVG container for scenes
@@ -316,14 +342,14 @@ d3.select('#btnPopular').on('click', () => {
   svg.append("g").call(makeAnnotations);
 
   d3.select("#explanation").html(`
-    <p>
-      The significance of the data: The height of the bars reflects the total number of subscribers in each category.
-      The average price for courses in each category is shown when you hover over the bar.
-    </p>
-    <div class="toggle-container">
+  <div class="toggle-container">
       <input type="checkbox" id="toggle-free-courses" checked>
       <label for="toggle-free-courses">Include Free Courses</label>
     </div>
+    <p>
+      The Web Development category stands out with a significant number of subscribers, surpassing all others. As we're focusing on creating high-revenue courses, we'll concentrate on this category for further exploration. Initially, the chart excludes free courses, but toggling free courses reveals that the overall trend remains consistent.
+    </p>
+   
   `);
 
   let toggleContainer = d3.select(".toggle-container");
@@ -335,25 +361,46 @@ d3.select('#btnPopular').on('click', () => {
   }
 
   function updateSubjects(showFree) {
-    filteredData = showFree ? data : data.filter(d => d.price > 0);
+  const filteredData = showFree ? data : data.filter(d => d.price > 0);
 
-    subjectCounts = d3.rollups(filteredData, v => d3.sum(v, d => d.num_subscribers), d => d.subject);
+  const subjectCounts = d3.rollups(filteredData, v => d3.sum(v, d => d.num_subscribers), d => d.subject);
+  subjectCounts.sort((a, b) => b[1] - a[1]);
 
-    x.domain(subjectCounts.map(d => d[0]));
-    y.domain([0, d3.max(subjectCounts, d => d[1])]);
+  x.domain(subjectCounts.map(d => d[0]));
 
-    g.select(".x-label").text("Category");
-    g.select(".y-label").text("Total Number of Subscribers");
+  const bars = g.selectAll(".bar")
+    .data(subjectCounts, d => d[0]);
 
-    g.selectAll(".bar")
-      .data(subjectCounts)
-      .transition()
-      .duration(500)
-      .attr("x", d => x(d[0]))
-      .attr("width", x.bandwidth())
-      .attr("y", d => y(d[1]))
-      .attr("height", d => height - y(d[1]));
-  }
+  bars.exit()
+    .transition()
+    .duration(500)
+    .attr("height", 0)
+    .attr("y", height)
+    .remove();
+
+  bars.enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("x", d => x(d[0]))
+    .attr("width", x.bandwidth())
+    .attr("y", height) // Start from the bottom
+    .attr("height", 0) // Set initial height to 0
+    .attr("fill", (d, i) => d3.schemeCategory10[i % 10])
+    .merge(bars)
+    .transition()
+    .duration(500)
+    .attr("x", d => x(d[0]))
+    .attr("width", x.bandwidth())
+    .attr("y", d => y(d[1])) // Adjusted height based on the filtered data
+    .attr("height", d => height - y(d[1])); // Calculate the new height based on the total height
+}
+
+
+
+
+
+
+
 }
 
 
@@ -577,7 +624,7 @@ g.append("text")
   svg.append("g").call(makeAnnotations);
 
     d3.select("#explanation")
-            .html("Explanation of the second stage!");
+            .html("<p>This page showcases the most popular topics within the Web Development category, identified based on course titles. The Y-axis represents the average course price, while the circle size corresponds to the total number of subscribers. Circles are sorted by average price, from low to high.</p><p>Foundational technologies such as HTML, PHP, and WordPress exhibit relatively high subscriber counts but come with a lower average price. For those seeking greater revenue potential, exploring cutting-edge technologies like Angular, React.js, or Ruby on Rails, which boast a higher average price, could be advantageous.</p>");
 }
 
 
@@ -622,7 +669,7 @@ function drawLevels(data, svg) {
     .style("font-weight", "bold");
   headerRow.append("th").text("Course Title");
   headerRow.append("th").text("Subscribers");
-  headerRow.append("th").text("Price");
+  headerRow.append("th").text("Price (USD)");
 
   // Create the table body
   const tbody = table.append("tbody");
@@ -697,20 +744,23 @@ const filteredCourses = webDevCourses.filter(course => {
   // Enter selection - append new rows
   const enterRows = rows.enter().append("tr");
 
-  enterRows.append("td")
-    .style("padding", "8px")
-    .style("border-bottom", "1px solid #ddd")
-    .text(d => d.course_title);
-  
-  enterRows.append("td")
-    .style("padding", "8px")
-    .style("border-bottom", "1px solid #ddd")
-    .text(d => d.num_subscribers);
-  
-  enterRows.append("td")
-    .style("padding", "8px")
-    .style("border-bottom", "1px solid #ddd")
-    .text(d => d.price);
+  const formatComma = d3.format(",");
+const formatCurrency = d3.format("$,.0f");
+
+enterRows.append("td")
+  .style("padding", "8px")
+  .style("border-bottom", "1px solid #ddd")
+  .text(d => d.course_title);
+
+enterRows.append("td")
+  .style("padding", "8px")
+  .style("border-bottom", "1px solid #ddd")
+  .text(d => formatComma(d.num_subscribers));
+
+enterRows.append("td")
+  .style("padding", "8px")
+  .style("border-bottom", "1px solid #ddd")
+  .text(d => formatCurrency(d.price));
 
     // Exit selection - remove rows that are no longer needed
     rows.exit().remove();
